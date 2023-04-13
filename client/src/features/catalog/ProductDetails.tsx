@@ -1,7 +1,9 @@
-import { Divider, Grid, Table, TableBody, TableCell, TableContainer, TableRow, Typography } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
+import { Divider, Grid, Table, TableBody, TableCell, TableContainer, TableRow, TextField, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import agent from "../../app/api/agent";
+import { useStoreContext } from "../../app/context/StoreContext";
 import NotFound from "../../app/errors/NotFound";
 import { Product } from "../../app/models/product";
 
@@ -9,12 +11,44 @@ export default function ProductDetails(){
     const {id}= useParams<{id:string}>();
     const [product, setProduct]= useState<Product | null>(null);
     const [loading, setLoading] = useState(true);
+    const[quantity,setQuantity]= useState(0);
+    const [submitting,setSumbitting]= useState(false);
+    const {basket, setBasket, removeItem}= useStoreContext();
+    const item = basket?.items.find(i =>i.productId===product?.id);
+
+
     useEffect(()=>{
+        if(item){
+            setQuantity(item.qunatity);
+        }
         id && agent.Catalog.details(parseInt(id))
         .then(response => setProduct(response))
         .catch(error => console.log(error))
         .finally(()=>setLoading(false))
-    },[id])
+    },[id, item])
+    function handleUpdateCart(){
+        setSumbitting(true);
+        if(!item || quantity > item.qunatity){
+            const updatedQuantity = item ? quantity - item.qunatity : quantity;
+            agent.Basket.addItem(product?.id! , updatedQuantity)
+            .then(basket => setBasket(basket))
+            .catch(error => console.log(error))
+            .finally(()=> setSumbitting(false))
+        } else {
+            const updatedQuantity = item.qunatity - quantity;
+            agent.Basket.removeItem(product?.id!, updatedQuantity )
+            .then(()=> removeItem(product?.id!, updatedQuantity))
+            .catch(error => console.log(error))
+            .finally(()=> setSumbitting(false))
+
+        }
+    }
+    function handleInputChange( event: any){
+        if(event.target.value >= 0){
+            setQuantity(parseInt(event.target.value))
+
+        }
+    }
     if (loading) return <h3>Loading...</h3>
     if(!product) return <NotFound/>
     return(
@@ -52,6 +86,32 @@ export default function ProductDetails(){
                         </TableBody>
                     </Table>
                 </TableContainer>
+                <Grid container spacing={2}>
+                    <Grid item xs={6}>
+                        <TextField
+                        
+                        onChange={handleInputChange}
+                         variant="outlined"
+                         type='number'
+                         label='Quantity in Cart'
+                         fullWidth
+                         value={quantity}
+                         />
+                    </Grid>
+                    <Grid item xs={6}>
+                        <LoadingButton
+                        disabled={item?.qunatity === quantity ||  !item && quantity === 0}
+                        loading={submitting}
+                        onClick={handleUpdateCart}
+                        sx={{height: '55px'}}
+                        color='primary'
+                        size='large'
+                        variant='contained'
+                        fullWidth>
+                            {item ? 'Update Quantity' : 'Add to Cart' }
+                            </LoadingButton>
+                    </Grid>
+                </Grid>
             </Grid>
 
         </Grid>
