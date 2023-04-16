@@ -20,6 +20,7 @@ export default function ProductDetails(){
 
 
     useEffect(()=>{
+        if(item) setQuantity(item.qunatity)
         if (!product && id) dispatch(fetchProductAsync(parseInt(id))) 
      }, [id, item, product, dispatch]);
 
